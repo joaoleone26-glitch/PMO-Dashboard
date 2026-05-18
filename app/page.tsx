@@ -19,8 +19,10 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [filter, setFilter] = useState<Filter>('all');
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
 
-  const selectedProject = projects.find(p => p.id === selectedId) || null;
+  const activeProjects = projects.filter(p => selectedProjectIds.has(p.id));
+  const selectedProject = activeProjects.find(p => p.id === selectedId) || projects.find(p => p.id === selectedId) || null;
   const filteredProjects = projects.filter(p => filter === 'all' || p.farol === filter);
 
   // ── Fix: setSelectedId is called OUTSIDE the setProjects updater.
@@ -34,6 +36,13 @@ export default function Home() {
       const existingIds = new Set(prev.map(p => p.id));
       const fresh = newProjects.filter(p => !existingIds.has(p.id));
       return [...prev, ...fresh];
+    });
+
+    // Auto-select all new project IDs
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      newProjects.forEach(p => next.add(p.id));
+      return next;
     });
 
     // Track the loaded file
@@ -61,11 +70,38 @@ export default function Home() {
 
     setProjects(prev => prev.filter(p => !removedIds.has(p.id)));
     setLoadedFiles(prev => prev.filter(f => f.id !== fileId));
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      removedIds.forEach(id => next.delete(id));
+      return next;
+    });
 
-    // Clear selection if the selected project was inside this file
     if (selectedId && removedIds.has(selectedId)) {
       setSelectedId(null);
     }
+  };
+
+  const handleToggleFile = (fileId: string) => {
+    const file = loadedFiles.find(f => f.id === fileId);
+    if (!file) return;
+    const allOn = file.projectIds.every(id => selectedProjectIds.has(id));
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      if (allOn) {
+        file.projectIds.forEach(id => next.delete(id));
+      } else {
+        file.projectIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleToggleProject = (projectId: string) => {
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
+      return next;
+    });
   };
 
   const filterButtons: { key: Filter; label: string; color: string; activeColor: string }[] = [
@@ -81,7 +117,7 @@ export default function Home() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 24px', gap: 20, minHeight: 0, height: 'calc(100vh - 65px)', overflow: 'hidden' }}>
         {/* KPI row */}
-        <KPICards projects={projects} />
+        <KPICards projects={activeProjects.length > 0 ? activeProjects : projects} />
 
         {/* Main area */}
         <div style={{ flex: 1, display: 'flex', gap: 16, minHeight: 0, overflow: 'hidden' }}>
@@ -95,7 +131,14 @@ export default function Home() {
             </div>
 
             {/* Loaded files list */}
-            <LoadedFiles files={loadedFiles} onRemove={handleRemoveFile} />
+            <LoadedFiles
+              files={loadedFiles}
+              projects={projects}
+              selectedProjectIds={selectedProjectIds}
+              onRemove={handleRemoveFile}
+              onToggleFile={handleToggleFile}
+              onToggleProject={handleToggleProject}
+            />
 
             {/* Filter + project list */}
             {projects.length > 0 && (
@@ -191,7 +234,7 @@ export default function Home() {
                 </div>
               ) : (
                 <div style={{ height: '100%' }}>
-                  <ChatBox projects={projects} />
+                  <ChatBox projects={activeProjects.length > 0 ? activeProjects : projects} totalProjects={projects.length} />
                 </div>
               )}
             </div>

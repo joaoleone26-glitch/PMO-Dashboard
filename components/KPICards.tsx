@@ -38,14 +38,14 @@ export function KPICards({ projects }: { projects: Project[] }) {
   const counts = { verde: 0, amarelo: 0, vermelho: 0, cinza: 0 };
   for (const p of projects) counts[p.farol] = (counts[p.farol] || 0) + 1;
 
-  // CAPEX
+  // Execução Orçamentária
   let planejado = 0, realizado = 0, hasCapex = false;
   for (const p of projects) {
     if (p.budget?.planned) { planejado += p.budget.planned; hasCapex = true; }
     if (p.budget?.actual) { realizado += p.budget.actual; }
   }
-  const capexRestante = planejado - realizado;
-  const capexPct = planejado > 0 ? (realizado / planejado) * 100 : 0;
+  const execPct = planejado > 0 ? (realizado / planejado) * 100 : 0;
+  const execColor = execPct > 100 ? '#D5001C' : execPct >= 40 && execPct <= 90 ? '#22C55E' : '#F59E0B';
 
   // Health index
   const saudePct = total > 0 ? (counts.verde / total) * 100 : 0;
@@ -99,15 +99,15 @@ export function KPICards({ projects }: { projects: Project[] }) {
         <div style={{ position: 'absolute', bottom: 0, right: 0, width: 120, height: 120, background: 'radial-gradient(circle, rgba(213,0,28,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
       </div>
 
-      {/* Card 2: CAPEX Restante */}
+      {/* Card 2: Execução Orçamentária */}
       <div style={cardBase} className="hover-lift red-accent-top">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
             <p style={{ fontSize: 10, letterSpacing: '0.18em', color: '#52525B', textTransform: 'uppercase', marginBottom: 8 }}>
-              CAPEX Restante
+              Execução Orçamentária
             </p>
-            <p style={{ fontSize: 40, fontWeight: 800, color: '#FFFFFF', lineHeight: 1 }}>
-              {hasCapex ? formatCurrency(capexRestante) : '—'}
+            <p style={{ fontSize: 48, fontWeight: 800, lineHeight: 1, color: hasCapex ? execColor : '#FFFFFF' }}>
+              {hasCapex ? `${Math.round(execPct)}%` : '—'}
             </p>
           </div>
           <div style={{ width: 44, height: 44, background: 'rgba(213,0,28,0.1)', border: '1px solid rgba(213,0,28,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -119,22 +119,20 @@ export function KPICards({ projects }: { projects: Project[] }) {
         {hasCapex ? (
           <>
             <div style={{ marginBottom: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: '#71717A' }}>Comprometido</span>
-                <span style={{ fontSize: 11, color: '#A1A1AA', fontWeight: 600 }}>
-                  {Math.round(capexPct)}% de {formatCurrency(planejado)}
-                </span>
-              </div>
-              <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 99 }}>
-                <div
-                  className="progress-red"
-                  style={{ height: '100%', width: `${Math.min(capexPct, 100)}%`, borderRadius: 99, transition: 'width 0.8s ease' }}
-                />
+              <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${Math.min(execPct, 100)}%`,
+                  borderRadius: 99,
+                  background: execColor,
+                  boxShadow: `0 0 8px ${execColor}66`,
+                  transition: 'width 0.8s ease',
+                }} />
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, color: '#52525B' }}>Realizado: <span style={{ color: '#A1A1AA', fontWeight: 600 }}>{formatCurrency(realizado)}</span></span>
-              <span style={{ fontSize: 11, color: '#52525B' }}>Planejado: <span style={{ color: '#A1A1AA', fontWeight: 600 }}>{formatCurrency(planejado)}</span></span>
+              <span style={{ fontSize: 11, color: '#52525B' }}>Gasto: <span style={{ color: '#A1A1AA', fontWeight: 600 }}>{formatCurrency(realizado)}</span></span>
+              <span style={{ fontSize: 11, color: '#52525B' }}>Orçado: <span style={{ color: '#A1A1AA', fontWeight: 600 }}>{formatCurrency(planejado)}</span></span>
             </div>
           </>
         ) : (

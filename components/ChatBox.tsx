@@ -36,7 +36,7 @@ const SUGGESTIONS = [
   'Pontos de atenção prioritários',
 ];
 
-export function ChatBox({ projects }: { projects: Project[] }) {
+export function ChatBox({ projects, totalProjects }: { projects: Project[]; totalProjects: number }) {
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'init',
     role: 'assistant',
@@ -87,6 +87,21 @@ export function ChatBox({ projects }: { projects: Project[] }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Context badge */}
+      {totalProjects > 0 && (
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, color: '#52525B' }}>Contexto:</span>
+          <span style={{
+            fontSize: 10, fontWeight: 600,
+            color: projects.length < totalProjects ? '#F59E0B' : '#22C55E',
+            background: projects.length < totalProjects ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.1)',
+            border: `1px solid ${projects.length < totalProjects ? 'rgba(245,158,11,0.25)' : 'rgba(34,197,94,0.25)'}`,
+            borderRadius: 99, padding: '2px 8px',
+          }}>
+            Analisando {projects.length} de {totalProjects} projeto{totalProjects !== 1 ? 's' : ''} selecionado{totalProjects !== 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
       {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 12, background: 'rgba(0,0,0,0.2)' }}>
         {messages.map(m => <MessageBubble key={m.id} message={m} />)}
