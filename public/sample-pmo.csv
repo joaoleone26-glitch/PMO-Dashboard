@@ -1,0 +1,6 @@
+Projeto,Empresa,Status,Progresso (%),Prazo,Responsável,Orçamento Previsto (R$),Orçamento Realizado (R$),KPI - SLA (%),KPI - Disponibilidade (%),Dificuldades,Pontos de Atenção,Farol
+Migração Cloud AWS,TechCorp,Em andamento,75,2025-06-30,Ana Silva,500000,380000,98,99.5,"Integração com sistemas legados","Janela de migração limitada nos finais de semana",verde
+Upgrade Firewall Perimetral,SecureTech,Atrasado,40,2025-05-15,Carlos Mota,200000,210000,95,97,"Equipamentos com prazo de entrega maior que o previsto; Falta de mão de obra especializada","Expiração de contratos de suporte em julho; Risco de vulnerabilidades até conclusão",vermelho
+Implantação SD-WAN,NetGroup,Em andamento,60,2025-07-31,Maria Souza,350000,180000,99,99.8,"Alinhamento com operadoras de telecom","Homologação pendente em 2 filiais; Treinamento da equipe ainda não iniciado",amarelo
+NOC 24x7,InfraPlus,Concluído,100,2025-03-31,Pedro Costa,120000,118000,99.9,99.95,"Contratação de turnistas","",verde
+Modernização Storage SAN,DataTech,Planejamento,15,2025-09-30,Lucia Ferreira,800000,45000,,,,"Aprovação de budget pendente na diretoria; Fornecedor único disponível para o modelo escolhido",cinza
