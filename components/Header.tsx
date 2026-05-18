@@ -8,12 +8,6 @@ export function Header() {
     >
       {/* Left: Porsche Consulting */}
       <div className="flex items-center gap-4">
-        <div
-          style={{ background: '#D5001C', width: 36, height: 36 }}
-          className="flex items-center justify-center flex-shrink-0"
-        >
-          <span style={{ fontWeight: 900, fontSize: 16, color: '#fff', letterSpacing: '-0.02em', fontFamily: 'var(--font-geist-sans)' }}>P</span>
-        </div>
         <div>
           <p style={{ letterSpacing: '0.22em', fontSize: 13, fontWeight: 700, color: '#FFFFFF' }} className="uppercase">
             Porsche Consulting
