@@ -66,6 +66,9 @@ export async function extractProjectsFromText(rawText: string, fileName: string)
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '';
 
+  console.log(`[analyzer] Resposta do Claude: ${text.length} chars, stop_reason=${response.stop_reason}`);
+  console.log(`[analyzer] Preview da resposta (500 chars): ${text.slice(0, 500)}`);
+
   try {
     const parsed = JSON.parse(text);
     const projects: Project[] = (parsed.projects || []).map((p: Project, i: number) => ({
@@ -77,7 +80,9 @@ export async function extractProjectsFromText(rawText: string, fileName: string)
       attentionPoints: p.attentionPoints || [],
     }));
     return projects;
-  } catch {
+  } catch (parseErr) {
+    console.error('[analyzer] ERRO ao fazer JSON.parse da resposta do Claude:', parseErr);
+    console.error('[analyzer] Resposta completa que falhou no parse:', text);
     return [];
   }
 }
