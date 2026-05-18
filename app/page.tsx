@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Project } from '@/lib/types';
+import { Project, LoadedFile, FileUploadResult } from '@/lib/types';
 import { Header } from '@/components/Header';
 import { KPICards } from '@/components/KPICards';
 import { FileUpload } from '@/components/FileUpload';
+import { LoadedFiles } from '@/components/LoadedFiles';
 import { ProjectCard } from '@/components/ProjectCard';
 import { ProjectDetail } from '@/components/ProjectDetail';
 import { ChatBox } from '@/components/ChatBox';
@@ -14,29 +15,64 @@ type Filter = 'all' | 'verde' | 'amarelo' | 'vermelho';
 
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loadedFiles, setLoadedFiles] = useState<LoadedFile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [filter, setFilter] = useState<Filter>('all');
 
   const selectedProject = projects.find(p => p.id === selectedId) || null;
+  const filteredProjects = projects.filter(p => filter === 'all' || p.farol === filter);
 
-  const handleProjectsLoaded = (newProjects: Project[]) => {
+  // ── Fix: setSelectedId is called OUTSIDE the setProjects updater.
+  // Calling setState inside another setState's updater is forbidden in React
+  // and caused the state to not persist correctly.
+  const handleFileProcessed = (result: FileUploadResult) => {
+    const { fileName, format, projects: newProjects } = result;
+
+    // Deduplicate by id before merging
     setProjects(prev => {
       const existingIds = new Set(prev.map(p => p.id));
       const fresh = newProjects.filter(p => !existingIds.has(p.id));
-      const merged = [...prev, ...fresh];
-      if (!selectedId && merged.length > 0) setSelectedId(merged[0].id);
-      return merged;
+      return [...prev, ...fresh];
     });
+
+    // Track the loaded file
+    const fileEntry: LoadedFile = {
+      id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      fileName,
+      format,
+      projectCount: newProjects.length,
+      projectIds: newProjects.map(p => p.id),
+      uploadedAt: new Date().toISOString(),
+    };
+    setLoadedFiles(prev => [...prev, fileEntry]);
+
+    // Auto-select first project only when nothing is selected yet
+    if (!selectedId && newProjects.length > 0) {
+      setSelectedId(newProjects[0].id);
+    }
   };
 
-  const filteredProjects = projects.filter(p => filter === 'all' || p.farol === filter);
+  const handleRemoveFile = (fileId: string) => {
+    const file = loadedFiles.find(f => f.id === fileId);
+    if (!file) return;
+
+    const removedIds = new Set(file.projectIds);
+
+    setProjects(prev => prev.filter(p => !removedIds.has(p.id)));
+    setLoadedFiles(prev => prev.filter(f => f.id !== fileId));
+
+    // Clear selection if the selected project was inside this file
+    if (selectedId && removedIds.has(selectedId)) {
+      setSelectedId(null);
+    }
+  };
 
   const filterButtons: { key: Filter; label: string; color: string; activeColor: string }[] = [
-    { key: 'all',      label: 'Todos',    color: 'rgba(255,255,255,0.08)', activeColor: 'rgba(255,255,255,0.15)' },
-    { key: 'verde',    label: '🟢',       color: 'rgba(34,197,94,0.08)',   activeColor: 'rgba(34,197,94,0.2)'   },
-    { key: 'amarelo',  label: '🟡',       color: 'rgba(245,158,11,0.08)', activeColor: 'rgba(245,158,11,0.2)'  },
-    { key: 'vermelho', label: '🔴',       color: 'rgba(213,0,28,0.08)',   activeColor: 'rgba(213,0,28,0.2)'    },
+    { key: 'all',      label: 'Todos', color: 'rgba(255,255,255,0.08)', activeColor: 'rgba(255,255,255,0.15)' },
+    { key: 'verde',    label: '🟢',    color: 'rgba(34,197,94,0.08)',   activeColor: 'rgba(34,197,94,0.2)'   },
+    { key: 'amarelo',  label: '🟡',    color: 'rgba(245,158,11,0.08)', activeColor: 'rgba(245,158,11,0.2)'  },
+    { key: 'vermelho', label: '🔴',    color: 'rgba(213,0,28,0.08)',   activeColor: 'rgba(213,0,28,0.2)'    },
   ];
 
   return (
@@ -44,37 +80,37 @@ export default function Home() {
       <Header />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 24px', gap: 20, minHeight: 0, height: 'calc(100vh - 65px)', overflow: 'hidden' }}>
-        {/* KPI Cards row */}
+        {/* KPI row */}
         <KPICards projects={projects} />
 
         {/* Main area */}
         <div style={{ flex: 1, display: 'flex', gap: 16, minHeight: 0, overflow: 'hidden' }}>
 
           {/* Sidebar */}
-          <aside style={{ width: 264, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
-            {/* Upload */}
+          <aside style={{ width: 270, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
+
+            {/* Upload zone */}
             <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px' }}>
-              <FileUpload onProjectsLoaded={handleProjectsLoaded} />
+              <FileUpload onFileProcessed={handleFileProcessed} />
             </div>
+
+            {/* Loaded files list */}
+            <LoadedFiles files={loadedFiles} onRemove={handleRemoveFile} />
 
             {/* Filter + project list */}
             {projects.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* Filter chips */}
-                <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 5 }}>
                   {filterButtons.map(f => (
                     <button
                       key={f.key}
                       onClick={() => setFilter(f.key)}
                       style={{
-                        flex: 1,
-                        padding: '5px 0',
+                        flex: 1, padding: '5px 0',
                         border: `1px solid ${filter === f.key ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.07)'}`,
                         borderRadius: 7,
                         background: filter === f.key ? f.activeColor : f.color,
-                        color: '#A1A1AA',
-                        fontSize: 11,
-                        cursor: 'pointer',
+                        color: '#A1A1AA', fontSize: 11, cursor: 'pointer',
                         transition: 'all 0.15s ease',
                         fontWeight: filter === f.key ? 600 : 400,
                       }}
@@ -84,7 +120,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Projects list */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {filteredProjects.map(p => (
                     <ProjectCard
@@ -95,7 +130,7 @@ export default function Home() {
                     />
                   ))}
                   {filteredProjects.length === 0 && (
-                    <p style={{ fontSize: 12, color: '#3F3F46', textAlign: 'center', padding: '20px 0' }}>
+                    <p style={{ fontSize: 12, color: '#3F3F46', textAlign: 'center', padding: '16px 0' }}>
                       Nenhum projeto neste filtro
                     </p>
                   )}
@@ -105,31 +140,28 @@ export default function Home() {
           </aside>
 
           {/* Main panel */}
-          <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden', background: '#111111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 }}>
+          <main style={{
+            flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+            overflow: 'hidden', background: '#111111',
+            border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12,
+          }}>
             {/* Tab bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '0 20px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '0 20px', flexShrink: 0 }}>
               {([
-                { key: 'dashboard' as Tab, label: 'Dashboard', icon: '▦' },
-                { key: 'chat' as Tab, label: 'Assistente IA', icon: '◎' },
+                { key: 'dashboard' as Tab, label: 'Dashboard',    icon: '▦' },
+                { key: 'chat'      as Tab, label: 'Assistente IA', icon: '◎' },
               ]).map(t => (
                 <button
                   key={t.key}
                   onClick={() => setActiveTab(t.key)}
                   style={{
-                    padding: '14px 18px',
-                    background: 'none',
-                    border: 'none',
+                    padding: '14px 18px', background: 'none', border: 'none',
                     borderBottom: `2px solid ${activeTab === t.key ? '#D5001C' : 'transparent'}`,
                     color: activeTab === t.key ? '#FFFFFF' : '#52525B',
-                    fontSize: 12,
-                    fontWeight: activeTab === t.key ? 600 : 400,
-                    cursor: 'pointer',
-                    letterSpacing: '0.04em',
+                    fontSize: 12, fontWeight: activeTab === t.key ? 600 : 400,
+                    cursor: 'pointer', letterSpacing: '0.04em',
                     transition: 'all 0.15s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 7,
-                    marginBottom: -1,
+                    display: 'flex', alignItems: 'center', gap: 7, marginBottom: -1,
                   }}
                 >
                   <span style={{ fontSize: 10, opacity: 0.7 }}>{t.icon}</span>

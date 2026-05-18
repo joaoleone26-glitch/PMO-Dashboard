@@ -21,18 +21,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Não foi possível extrair texto do arquivo' }, { status: 400 });
     }
 
-    const projects = await extractProjectsFromText(rawText, file.name);
+    let projects;
+    try {
+      projects = await extractProjectsFromText(rawText, file.name);
+    } catch (aiErr) {
+      console.error('AI extraction error:', aiErr);
+      return NextResponse.json(
+        { error: 'Falha ao analisar o arquivo com IA. Verifique se a variável ANTHROPIC_API_KEY está configurada.' },
+        { status: 503 }
+      );
+    }
+
+    if (!projects || projects.length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhum projeto encontrado no arquivo. Verifique se o conteúdo contém dados de projetos PMO (nome, status, prazo, etc.).' },
+        { status: 422 }
+      );
+    }
+
+    const format = file.name.split('.').pop()?.toUpperCase() || 'TXT';
 
     return NextResponse.json({
       fileName: file.name,
-      format: file.type || file.name.split('.').pop(),
+      format,
       projects,
-      rawText: rawText.slice(0, 500),
     });
   } catch (err) {
     console.error('Upload error:', err);
     return NextResponse.json(
-      { error: 'Erro ao processar arquivo' },
+      { error: 'Erro interno ao processar arquivo' },
       { status: 500 }
     );
   }
