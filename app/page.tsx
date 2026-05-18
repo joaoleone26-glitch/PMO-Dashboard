@@ -1,162 +1,245 @@
 'use client';
 
 import { useState } from 'react';
-import { Project } from '@/lib/types';
+import { Project, LoadedFile, FileUploadResult } from '@/lib/types';
+import { Header } from '@/components/Header';
+import { KPICards } from '@/components/KPICards';
 import { FileUpload } from '@/components/FileUpload';
+import { LoadedFiles } from '@/components/LoadedFiles';
 import { ProjectCard } from '@/components/ProjectCard';
 import { ProjectDetail } from '@/components/ProjectDetail';
 import { ChatBox } from '@/components/ChatBox';
-import { SummaryBar } from '@/components/SummaryBar';
+
+type Tab = 'dashboard' | 'chat';
+type Filter = 'all' | 'verde' | 'amarelo' | 'vermelho';
 
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loadedFiles, setLoadedFiles] = useState<LoadedFile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat'>('dashboard');
-  const [filter, setFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
 
-  const selectedProject = projects.find(p => p.id === selectedId) || null;
+  const activeProjects = projects.filter(p => selectedProjectIds.has(p.id));
+  const selectedProject = activeProjects.find(p => p.id === selectedId) || projects.find(p => p.id === selectedId) || null;
+  const filteredProjects = projects.filter(p => filter === 'all' || p.farol === filter);
 
-  const handleProjectsLoaded = (newProjects: Project[]) => {
+  // ── Fix: setSelectedId is called OUTSIDE the setProjects updater.
+  // Calling setState inside another setState's updater is forbidden in React
+  // and caused the state to not persist correctly.
+  const handleFileProcessed = (result: FileUploadResult) => {
+    const { fileName, format, projects: newProjects } = result;
+
+    // Deduplicate by id before merging
     setProjects(prev => {
       const existingIds = new Set(prev.map(p => p.id));
       const fresh = newProjects.filter(p => !existingIds.has(p.id));
       return [...prev, ...fresh];
     });
-    if (newProjects.length > 0 && !selectedId) {
+
+    // Auto-select all new project IDs
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      newProjects.forEach(p => next.add(p.id));
+      return next;
+    });
+
+    // Track the loaded file
+    const fileEntry: LoadedFile = {
+      id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      fileName,
+      format,
+      projectCount: newProjects.length,
+      projectIds: newProjects.map(p => p.id),
+      uploadedAt: new Date().toISOString(),
+    };
+    setLoadedFiles(prev => [...prev, fileEntry]);
+
+    // Auto-select first project only when nothing is selected yet
+    if (!selectedId && newProjects.length > 0) {
       setSelectedId(newProjects[0].id);
     }
   };
 
-  const filteredProjects = projects.filter(p => {
-    if (filter === 'all') return true;
-    return p.farol === filter;
-  });
+  const handleRemoveFile = (fileId: string) => {
+    const file = loadedFiles.find(f => f.id === fileId);
+    if (!file) return;
+
+    const removedIds = new Set(file.projectIds);
+
+    setProjects(prev => prev.filter(p => !removedIds.has(p.id)));
+    setLoadedFiles(prev => prev.filter(f => f.id !== fileId));
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      removedIds.forEach(id => next.delete(id));
+      return next;
+    });
+
+    if (selectedId && removedIds.has(selectedId)) {
+      setSelectedId(null);
+    }
+  };
+
+  const handleToggleFile = (fileId: string) => {
+    const file = loadedFiles.find(f => f.id === fileId);
+    if (!file) return;
+    const allOn = file.projectIds.every(id => selectedProjectIds.has(id));
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      if (allOn) {
+        file.projectIds.forEach(id => next.delete(id));
+      } else {
+        file.projectIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleToggleProject = (projectId: string) => {
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
+      return next;
+    });
+  };
+
+  const filterButtons: { key: Filter; label: string; color: string; activeColor: string }[] = [
+    { key: 'all',      label: 'Todos', color: 'rgba(255,255,255,0.08)', activeColor: 'rgba(255,255,255,0.15)' },
+    { key: 'verde',    label: '🟢',    color: 'rgba(34,197,94,0.08)',   activeColor: 'rgba(34,197,94,0.2)'   },
+    { key: 'amarelo',  label: '🟡',    color: 'rgba(245,158,11,0.08)', activeColor: 'rgba(245,158,11,0.2)'  },
+    { key: 'vermelho', label: '🔴',    color: 'rgba(213,0,28,0.08)',   activeColor: 'rgba(213,0,28,0.2)'    },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-gray-900">PMO Dashboard</h1>
-            <p className="text-xs text-gray-500">Infraestrutura · Análise inteligente de projetos</p>
-          </div>
-        </div>
+    <div style={{ minHeight: '100vh', background: '#0A0A0A', display: 'flex', flexDirection: 'column' }}>
+      <Header />
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              activeTab === 'chat' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
-            Assistente IA
-          </button>
-        </div>
-      </header>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 24px', gap: 20, minHeight: 0, height: 'calc(100vh - 65px)', overflow: 'hidden' }}>
+        {/* KPI row */}
+        <KPICards projects={activeProjects.length > 0 ? activeProjects : projects} />
 
-      <div className="flex-1 flex overflow-hidden p-4 gap-4" style={{ height: 'calc(100vh - 57px)' }}>
-        {/* Left Sidebar */}
-        <aside className="w-72 flex-shrink-0 flex flex-col gap-3 overflow-y-auto">
-          {/* Upload */}
-          <div className="bg-white rounded-xl border border-gray-200 p-3">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Importar Dados PMO</h2>
-            <FileUpload onProjectsLoaded={handleProjectsLoaded} />
-          </div>
+        {/* Main area */}
+        <div style={{ flex: 1, display: 'flex', gap: 16, minHeight: 0, overflow: 'hidden' }}>
 
-          {/* Filters */}
-          {projects.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-3">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filtrar por Farol</h2>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { key: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-700' },
-                  { key: 'verde', label: '🟢 No prazo', color: 'bg-emerald-100 text-emerald-800' },
-                  { key: 'amarelo', label: '🟡 Atenção', color: 'bg-amber-100 text-amber-800' },
-                  { key: 'vermelho', label: '🔴 Críticos', color: 'bg-red-100 text-red-800' },
-                ].map(f => (
-                  <button
-                    key={f.key}
-                    onClick={() => setFilter(f.key)}
-                    className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all ${
-                      filter === f.key ? `${f.color} ring-2 ring-offset-1 ring-gray-300` : f.color
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+          {/* Sidebar */}
+          <aside style={{ width: 270, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
+
+            {/* Upload zone */}
+            <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px' }}>
+              <FileUpload onFileProcessed={handleFileProcessed} />
             </div>
-          )}
 
-          {/* Project List */}
-          {filteredProjects.length > 0 && (
-            <div className="space-y-2">
-              {filteredProjects.map(p => (
-                <ProjectCard
-                  key={p.id}
-                  project={p}
-                  selected={selectedId === p.id}
-                  onClick={() => {
-                    setSelectedId(p.id);
-                    setActiveTab('dashboard');
+            {/* Loaded files list */}
+            <LoadedFiles
+              files={loadedFiles}
+              projects={projects}
+              selectedProjectIds={selectedProjectIds}
+              onRemove={handleRemoveFile}
+              onToggleFile={handleToggleFile}
+              onToggleProject={handleToggleProject}
+            />
+
+            {/* Filter + project list */}
+            {projects.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  {filterButtons.map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setFilter(f.key)}
+                      style={{
+                        flex: 1, padding: '5px 0',
+                        border: `1px solid ${filter === f.key ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.07)'}`,
+                        borderRadius: 7,
+                        background: filter === f.key ? f.activeColor : f.color,
+                        color: '#A1A1AA', fontSize: 11, cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        fontWeight: filter === f.key ? 600 : 400,
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {filteredProjects.map(p => (
+                    <ProjectCard
+                      key={p.id}
+                      project={p}
+                      selected={selectedId === p.id}
+                      onClick={() => { setSelectedId(p.id); setActiveTab('dashboard'); }}
+                    />
+                  ))}
+                  {filteredProjects.length === 0 && (
+                    <p style={{ fontSize: 12, color: '#3F3F46', textAlign: 'center', padding: '16px 0' }}>
+                      Nenhum projeto neste filtro
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </aside>
+
+          {/* Main panel */}
+          <main style={{
+            flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+            overflow: 'hidden', background: '#111111',
+            border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12,
+          }}>
+            {/* Tab bar */}
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '0 20px', flexShrink: 0 }}>
+              {([
+                { key: 'dashboard' as Tab, label: 'Dashboard',    icon: '▦' },
+                { key: 'chat'      as Tab, label: 'Assistente IA', icon: '◎' },
+              ]).map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTab(t.key)}
+                  style={{
+                    padding: '14px 18px', background: 'none', border: 'none',
+                    borderBottom: `2px solid ${activeTab === t.key ? '#D5001C' : 'transparent'}`,
+                    color: activeTab === t.key ? '#FFFFFF' : '#52525B',
+                    fontSize: 12, fontWeight: activeTab === t.key ? 600 : 400,
+                    cursor: 'pointer', letterSpacing: '0.04em',
+                    transition: 'all 0.15s ease',
+                    display: 'flex', alignItems: 'center', gap: 7, marginBottom: -1,
                   }}
-                />
+                >
+                  <span style={{ fontSize: 10, opacity: 0.7 }}>{t.icon}</span>
+                  {t.label}
+                  {t.key === 'chat' && projects.length > 0 && (
+                    <span style={{ fontSize: 10, background: '#D5001C', color: '#fff', padding: '1px 6px', borderRadius: 99, fontWeight: 700 }}>
+                      {projects.length}
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
-          )}
-        </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 min-w-0 flex flex-col gap-3 overflow-hidden">
-          {activeTab === 'dashboard' ? (
-            <>
-              {projects.length > 0 && <SummaryBar projects={projects} />}
-              <div className="flex-1 min-h-0 bg-white rounded-xl border border-gray-200 overflow-hidden">
-                {projects.length === 0 ? (
-                  <EmptyState />
-                ) : selectedProject ? (
-                  <div className="h-full p-5 overflow-y-auto">
+            {/* Content */}
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              {activeTab === 'dashboard' ? (
+                <div style={{ height: '100%', overflowY: 'auto', padding: '24px' }}>
+                  {projects.length === 0 ? (
+                    <EmptyState />
+                  ) : selectedProject ? (
                     <ProjectDetail project={selectedProject} />
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                    Selecione um projeto para ver os detalhes
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 min-h-0 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
-              <div className="border-b border-gray-100 px-4 py-2.5 flex items-center gap-2 flex-shrink-0">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                <span className="text-sm font-medium text-gray-700">Assistente PMO</span>
-                {projects.length > 0 && (
-                  <span className="text-xs text-gray-400">{projects.length} projeto(s) carregado(s)</span>
-                )}
-              </div>
-              <div className="flex-1 min-h-0">
-                <ChatBox projects={projects} />
-              </div>
+                  ) : (
+                    <p style={{ color: '#3F3F46', fontSize: 13, textAlign: 'center', paddingTop: 40 }}>
+                      Selecione um projeto na lista
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ height: '100%' }}>
+                  <ChatBox projects={activeProjects.length > 0 ? activeProjects : projects} totalProjects={projects.length} />
+                </div>
+              )}
             </div>
-          )}
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );
@@ -164,21 +247,21 @@ export default function Home() {
 
 function EmptyState() {
   return (
-    <div className="h-full flex flex-col items-center justify-center gap-4 p-8 text-center">
-      <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
-        <svg className="w-8 h-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, textAlign: 'center', padding: 40 }}>
+      <div style={{ width: 56, height: 56, background: 'rgba(213,0,28,0.08)', border: '1px solid rgba(213,0,28,0.2)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D5001C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       </div>
       <div>
-        <h2 className="text-lg font-bold text-gray-800 mb-1">Nenhum projeto carregado</h2>
-        <p className="text-sm text-gray-500 max-w-sm">
-          Faça upload de um arquivo PMO em qualquer formato e a IA irá extrair automaticamente os projetos, faróis, KPIs e pontos de atenção.
+        <h2 style={{ fontSize: 16, fontWeight: 600, color: '#FFFFFF', marginBottom: 8 }}>Nenhum projeto carregado</h2>
+        <p style={{ fontSize: 13, color: '#52525B', maxWidth: 340, lineHeight: 1.6 }}>
+          Faça upload de um arquivo PMO na barra lateral. A IA extrai automaticamente faróis, KPIs, dificuldades e pontos de atenção.
         </p>
       </div>
-      <div className="flex flex-wrap justify-center gap-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 }}>
         {['CSV', 'Excel', 'JSON', 'PDF', 'DOCX'].map(fmt => (
-          <span key={fmt} className="text-xs bg-gray-100 text-gray-600 rounded-full px-3 py-1 font-medium">
+          <span key={fmt} style={{ fontSize: 11, padding: '3px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 99, color: '#71717A' }}>
             {fmt}
           </span>
         ))}

@@ -1,30 +1,42 @@
-import * as XLSX from 'xlsx';
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 export async function parseFile(buffer: Buffer, mimeType: string, fileName: string): Promise<string> {
   const ext = fileName.split('.').pop()?.toLowerCase();
+  console.log(`[parser] file="${fileName}" ext=${ext} mime=${mimeType} size=${buffer.length}`);
 
   if (ext === 'json' || mimeType === 'application/json') {
-    return parseJSON(buffer);
+    const result = parseJSON(buffer);
+    console.log(`[parser] JSON → ${result.length} chars`);
+    return result;
   }
 
   if (ext === 'csv' || mimeType === 'text/csv') {
-    return buffer.toString('utf-8');
+    const result = buffer.toString('utf-8');
+    console.log(`[parser] CSV → ${result.length} chars, preview: ${result.slice(0, 120)}`);
+    return result;
   }
 
   if (ext === 'xlsx' || ext === 'xls' || mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
-    return parseExcel(buffer);
+    const result = parseExcel(buffer);
+    console.log(`[parser] Excel → ${result.length} chars, preview: ${result.slice(0, 120)}`);
+    return result;
   }
 
   if (ext === 'pdf' || mimeType === 'application/pdf') {
-    return parsePDF(buffer);
+    const result = await parsePDF(buffer);
+    console.log(`[parser] PDF → ${result.length} chars, preview: ${result.slice(0, 120)}`);
+    return result;
   }
 
   if (ext === 'docx' || ext === 'doc' || mimeType.includes('word')) {
-    return parseDocx(buffer);
+    const result = await parseDocx(buffer);
+    console.log(`[parser] DOCX → ${result.length} chars, preview: ${result.slice(0, 120)}`);
+    return result;
   }
 
-  // fallback: try as plain text
-  return buffer.toString('utf-8');
+  const result = buffer.toString('utf-8');
+  console.log(`[parser] TXT fallback → ${result.length} chars`);
+  return result;
 }
 
 function parseJSON(buffer: Buffer): string {
@@ -37,6 +49,7 @@ function parseJSON(buffer: Buffer): string {
 }
 
 function parseExcel(buffer: Buffer): string {
+  const XLSX = require('xlsx');
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const lines: string[] = [];
 
@@ -53,21 +66,22 @@ function parseExcel(buffer: Buffer): string {
 
 async function parsePDF(buffer: Buffer): Promise<string> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require('pdf-parse');
     const data = await pdfParse(buffer);
     return data.text;
-  } catch {
+  } catch (err) {
+    console.error('[parser] PDF error:', err);
     return '[Erro ao processar PDF]';
   }
 }
 
 async function parseDocx(buffer: Buffer): Promise<string> {
   try {
-    const mammoth = await import('mammoth');
+    const mammoth = require('mammoth');
     const result = await mammoth.extractRawText({ buffer });
     return result.value;
-  } catch {
+  } catch (err) {
+    console.error('[parser] DOCX error:', err);
     return '[Erro ao processar DOCX]';
   }
 }

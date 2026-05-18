@@ -38,9 +38,17 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-export interface ProcessedFile {
+export interface LoadedFile {
+  id: string;
+  fileName: string;
+  format: string;
+  projectCount: number;
+  projectIds: string[];
+  uploadedAt: string;
+}
+
+export interface FileUploadResult {
   fileName: string;
   format: string;
   projects: Project[];
-  rawText: string;
 }
