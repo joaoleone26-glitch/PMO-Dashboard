@@ -2,32 +2,26 @@
 
 import { FarolStatus } from '@/lib/types';
 
-const config: Record<FarolStatus, { label: string; color: string; dot: string }> = {
-  verde: { label: 'No Prazo', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', dot: 'bg-emerald-500' },
-  amarelo: { label: 'Atenção', color: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500' },
-  vermelho: { label: 'Crítico', color: 'bg-red-100 text-red-800 border-red-200', dot: 'bg-red-500' },
-  cinza: { label: 'Sem dados', color: 'bg-gray-100 text-gray-600 border-gray-200', dot: 'bg-gray-400' },
+const config: Record<FarolStatus, { label: string; color: string; bg: string; border: string }> = {
+  verde:    { label: 'No Prazo', color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
+  amarelo:  { label: 'Atenção',  color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.25)' },
+  vermelho: { label: 'Crítico',  color: '#D5001C', bg: 'rgba(213,0,28,0.1)',   border: 'rgba(213,0,28,0.25)'   },
+  cinza:    { label: 'N/A',      color: '#6B7280', bg: 'rgba(107,114,128,0.1)',border: 'rgba(107,114,128,0.2)' },
 };
 
 export function FarolBadge({ status }: { status: FarolStatus }) {
   const c = config[status] || config.cinza;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${c.color}`}>
-      <span className={`w-2 h-2 rounded-full ${c.dot}`} />
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 99, background: c.bg, border: `1px solid ${c.border}`, fontSize: 11, fontWeight: 600, color: c.color, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.color, boxShadow: c.color !== '#6B7280' ? `0 0 6px ${c.color}` : 'none', display: 'inline-block', flexShrink: 0 }} />
       {c.label}
     </span>
   );
 }
 
-export function FarolDot({ status, size = 'md' }: { status: FarolStatus; size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = { sm: 'w-3 h-3', md: 'w-4 h-4', lg: 'w-6 h-6' };
-  const dots: Record<FarolStatus, string> = {
-    verde: 'bg-emerald-500 shadow-emerald-200',
-    amarelo: 'bg-amber-500 shadow-amber-200',
-    vermelho: 'bg-red-500 shadow-red-200',
-    cinza: 'bg-gray-400',
-  };
+export function FarolDot({ status }: { status: FarolStatus }) {
+  const c = config[status] || config.cinza;
   return (
-    <span className={`inline-block rounded-full shadow-sm ${sizes[size]} ${dots[status] || dots.cinza}`} />
+    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: c.color, boxShadow: c.color !== '#6B7280' ? `0 0 8px ${c.color}88` : 'none' }} />
   );
 }
