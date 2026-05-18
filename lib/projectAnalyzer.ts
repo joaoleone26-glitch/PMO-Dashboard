@@ -70,7 +70,11 @@ export async function extractProjectsFromText(rawText: string, fileName: string)
   console.log(`[analyzer] Preview da resposta (500 chars): ${text.slice(0, 500)}`);
 
   try {
-    const parsed = JSON.parse(text);
+    const cleaned = text
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .trim();
+    const parsed = JSON.parse(cleaned);
     const projects: Project[] = (parsed.projects || []).map((p: Project, i: number) => ({
       ...p,
       id: p.id || `proj-${Date.now()}-${i}`,
