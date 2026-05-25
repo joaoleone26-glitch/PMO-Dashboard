@@ -1,4 +1,8 @@
 export type FarolStatus = 'verde' | 'amarelo' | 'vermelho' | 'cinza';
+export type ProjectPhase = 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento';
+export type KnowledgeArea =
+  | 'Escopo' | 'Prazo' | 'Custo' | 'Qualidade' | 'Riscos'
+  | 'RH' | 'Comunicações' | 'Aquisições' | 'Partes Interessadas' | 'Integração';
 
 export interface KPI {
   name: string;
@@ -6,6 +10,12 @@ export interface KPI {
   unit?: string;
   target?: string | number;
   status: 'on-track' | 'at-risk' | 'off-track' | 'unknown';
+}
+
+export interface SCurvePoint {
+  month: string;
+  planned: number;
+  actual: number | null;
 }
 
 export interface Project {
@@ -20,15 +30,22 @@ export interface Project {
   status: string;
   progress?: number;
   deadline?: string;
-  budget?: {
-    planned?: number;
-    actual?: number;
-    currency?: string;
-  };
+  startDate?: string;
+  budget?: { planned?: number; actual?: number; currency?: string };
   team?: string[];
   responsible?: string;
   lastUpdated: string;
   rawData?: string;
+  phase?: ProjectPhase;
+  knowledgeArea?: KnowledgeArea;
+  // EVM
+  ev?: number;
+  pv?: number;
+  ac?: number;
+  riskProbability?: number;
+  riskImpact?: number;
+  scheduleCurve?: SCurvePoint[];
+  costCurve?: SCurvePoint[];
 }
 
 export interface ChatMessage {
@@ -45,10 +62,19 @@ export interface LoadedFile {
   projectCount: number;
   projectIds: string[];
   uploadedAt: string;
+  source?: 'upload' | 'onedrive' | 'googledrive';
 }
 
 export interface FileUploadResult {
   fileName: string;
   format: string;
   projects: Project[];
+}
+
+export interface ProjectFilters {
+  farol: FarolStatus | 'all';
+  phases: ProjectPhase[];
+  knowledgeAreas: KnowledgeArea[];
+  dateStart: string;
+  dateEnd: string;
 }

@@ -34,6 +34,18 @@ export async function parseFile(buffer: Buffer, mimeType: string, fileName: stri
     return result;
   }
 
+  if (ext === 'pptx' || ext === 'ppt' || mimeType.includes('presentation') || mimeType.includes('powerpoint')) {
+    const result = await parsePptx(buffer);
+    console.log(`[parser] PPTX → ${result.length} chars, preview: ${result.slice(0, 120)}`);
+    return result;
+  }
+
+  if (ext === 'xml' || ext === 'xer' || mimeType === 'application/xml' || mimeType === 'text/xml') {
+    const result = parseXml(buffer);
+    console.log(`[parser] XML/XER → ${result.length} chars, preview: ${result.slice(0, 120)}`);
+    return result;
+  }
+
   const result = buffer.toString('utf-8');
   console.log(`[parser] TXT fallback → ${result.length} chars`);
   return result;
@@ -84,4 +96,40 @@ async function parseDocx(buffer: Buffer): Promise<string> {
     console.error('[parser] DOCX error:', err);
     return '[Erro ao processar DOCX]';
   }
+}
+
+async function parsePptx(buffer: Buffer): Promise<string> {
+  try {
+    // PPTX is a ZIP with XML slides
+    const JSZip = require('jszip');
+    const zip = await JSZip.loadAsync(buffer);
+    const slideFiles = Object.keys(zip.files).filter(f => f.match(/ppt\/slides\/slide\d+\.xml/)).sort();
+    const texts: string[] = [];
+    for (const slide of slideFiles) {
+      const xml = await zip.files[slide].async('string');
+      // extract text nodes from XML
+      const matches = xml.match(/<a:t[^>]*>([^<]+)<\/a:t>/g) ?? [];
+      const slideText = matches.map((m: string) => m.replace(/<[^>]+>/g, '')).join(' ');
+      if (slideText.trim()) texts.push(`[Slide] ${slideText.trim()}`);
+    }
+    return texts.join('\n') || '[PPTX sem texto extraível]';
+  } catch (err) {
+    console.error('[parser] PPTX error:', err);
+    return '[Erro ao processar PPTX]';
+  }
+}
+
+function parseXml(buffer: Buffer): string {
+  // Strip XML tags and return readable text + key attributes
+  const raw = buffer.toString('utf-8');
+  // Primavera XER: tab-delimited sections
+  if (raw.startsWith('%T\t')) return raw; // return raw XER, Claude can parse it
+  // Generic XML: extract text content and attribute values
+  const text = raw
+    .replace(/<\?[^>]*\?>/g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.slice(0, 50000);
 }

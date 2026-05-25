@@ -18,8 +18,11 @@ Sempre retorne um JSON válido com um array de projetos. Cada projeto deve segui
       "description": "descrição breve do projeto",
       "status": "descrição do status atual",
       "progress": 0-100 (percentual, número),
-      "deadline": "data limite se disponível",
+      "startDate": "data de início se disponível (ISO 8601)",
+      "deadline": "data limite se disponível (ISO 8601)",
       "responsible": "responsável se disponível",
+      "phase": "Iniciação | Planejamento | Execução | Monitoramento | Encerramento",
+      "knowledgeArea": "Escopo | Prazo | Custo | Qualidade | Riscos | RH | Comunicações | Aquisições | Partes Interessadas | Integração",
       "kpis": [
         {
           "name": "nome do indicador",
@@ -36,6 +39,17 @@ Sempre retorne um JSON válido com um array de projetos. Cada projeto deve segui
         "actual": número ou null,
         "currency": "BRL | USD | EUR"
       },
+      "ev": valor ganho (Earned Value) em R$ se disponível ou null,
+      "pv": valor planejado (Planned Value) em R$ se disponível ou null,
+      "ac": custo real (Actual Cost) em R$ se disponível ou null,
+      "riskProbability": 1-5 (probabilidade do risco principal),
+      "riskImpact": 1-5 (impacto do risco principal),
+      "scheduleCurve": [
+        { "month": "Jan/24", "planned": 0-100, "actual": 0-100 ou null se futuro }
+      ],
+      "costCurve": [
+        { "month": "Jan/24", "planned": valor acumulado em R$, "actual": valor acumulado em R$ ou null se futuro }
+      ],
       "team": ["membro 1", "membro 2"],
       "lastUpdated": "data de atualização ou data atual"
     }
@@ -47,6 +61,12 @@ Regras para o farol:
 - amarelo: riscos moderados, atenção necessária
 - vermelho: problemas críticos, ação imediata necessária
 - cinza: status desconhecido ou sem dados suficientes
+
+Regras para riskProbability e riskImpact:
+- vermelho → probabilidade 4-5, impacto 4-5
+- amarelo → probabilidade 2-4, impacto 2-4
+- verde → probabilidade 1-2, impacto 1-2
+- cinza → probabilidade 2, impacto 2
 
 Se o documento contiver múltiplos projetos, extraia todos. Se não tiver dados suficientes para um campo, use null ou array vazio.
 Retorne APENAS o JSON, sem explicações ou markdown.`;
