@@ -4,18 +4,63 @@ import { useState } from 'react';
 import { LoadedFile, Project } from '@/lib/types';
 
 const FORMAT_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
-  CSV:  { color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
-  XLSX: { color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
-  XLS:  { color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
-  JSON: { color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.25)' },
-  PDF:  { color: '#D5001C', bg: 'rgba(213,0,28,0.1)',    border: 'rgba(213,0,28,0.25)'   },
-  DOCX: { color: '#A78BFA', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.25)'},
-  DOC:  { color: '#A78BFA', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.25)'},
-  TXT:  { color: '#9CA3AF', bg: 'rgba(156,163,175,0.1)', border: 'rgba(156,163,175,0.2)' },
+  // Tabular
+  CSV:   { color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
+  XLSX:  { color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
+  XLS:   { color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
+  XLSM:  { color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
+  XLSB:  { color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)'  },
+  // Data
+  JSON:  { color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.25)' },
+  XML:   { color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.25)' },
+  XER:   { color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.25)' },
+  P6XML: { color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.25)' },
+  MPX:   { color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.25)' },
+  // Documents
+  PDF:   { color: '#D5001C', bg: 'rgba(213,0,28,0.1)',    border: 'rgba(213,0,28,0.25)'   },
+  DOCX:  { color: '#A78BFA', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.25)'},
+  DOC:   { color: '#A78BFA', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.25)'},
+  RTF:   { color: '#A78BFA', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.25)'},
+  MSG:   { color: '#A78BFA', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.25)'},
+  PPTX:  { color: '#FB923C', bg: 'rgba(251,146,60,0.1)',  border: 'rgba(251,146,60,0.25)' },
+  PPT:   { color: '#FB923C', bg: 'rgba(251,146,60,0.1)',  border: 'rgba(251,146,60,0.25)' },
+  VSDX:  { color: '#FB923C', bg: 'rgba(251,146,60,0.1)',  border: 'rgba(251,146,60,0.25)' },
+  TXT:   { color: '#9CA3AF', bg: 'rgba(156,163,175,0.1)', border: 'rgba(156,163,175,0.2)' },
+  // Images
+  PNG:   { color: '#F472B6', bg: 'rgba(244,114,182,0.1)', border: 'rgba(244,114,182,0.25)'},
+  JPG:   { color: '#F472B6', bg: 'rgba(244,114,182,0.1)', border: 'rgba(244,114,182,0.25)'},
+  JPEG:  { color: '#F472B6', bg: 'rgba(244,114,182,0.1)', border: 'rgba(244,114,182,0.25)'},
+  GIF:   { color: '#F472B6', bg: 'rgba(244,114,182,0.1)', border: 'rgba(244,114,182,0.25)'},
+  WEBP:  { color: '#F472B6', bg: 'rgba(244,114,182,0.1)', border: 'rgba(244,114,182,0.25)'},
+  TIFF:  { color: '#F472B6', bg: 'rgba(244,114,182,0.1)', border: 'rgba(244,114,182,0.25)'},
+  BMP:   { color: '#F472B6', bg: 'rgba(244,114,182,0.1)', border: 'rgba(244,114,182,0.25)'},
+  // Project management
+  MPP:   { color: '#34D399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.25)' },
+  MPT:   { color: '#34D399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.25)' },
+  MDB:   { color: '#34D399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.25)' },
+  ACCDB: { color: '#34D399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.25)' },
+  // CAD/BIM
+  DWG:   { color: '#FBBF24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)' },
+  DXF:   { color: '#FBBF24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)' },
+  IFC:   { color: '#FBBF24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)' },
+  RVT:   { color: '#FBBF24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)' },
+  SKP:   { color: '#FBBF24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)' },
+  NWD:   { color: '#FBBF24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)' },
+  NWC:   { color: '#FBBF24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)' },
 };
 
 function formatLabel(fmt: string): string {
-  const map: Record<string, string> = { XLSX: 'Excel', XLS: 'Excel', DOCX: 'Word', DOC: 'Word' };
+  const map: Record<string, string> = {
+    XLSX: 'Excel', XLS: 'Excel', XLSM: 'Excel', XLSB: 'Excel',
+    DOCX: 'Word', DOC: 'Word', RTF: 'Word',
+    PPTX: 'PPT', PPT: 'PPT', VSDX: 'Visio',
+    P6XML: 'P6', MPP: 'MS-P', MPT: 'MS-P', MPX: 'MPX',
+    MDB: 'Access', ACCDB: 'Access',
+    DWG: 'CAD', DXF: 'CAD', IFC: 'BIM', RVT: 'Revit',
+    SKP: 'SKP', NWD: 'NW', NWC: 'NW',
+    PNG: 'IMG', JPG: 'IMG', JPEG: 'IMG', GIF: 'IMG', WEBP: 'IMG', TIFF: 'IMG', BMP: 'IMG',
+    MSG: 'Email',
+  };
   return map[fmt.toUpperCase()] || fmt.toUpperCase();
 }
 
