@@ -39,13 +39,39 @@ Sempre retorne um JSON válido com um array de projetos. Cada projeto deve segui
         "actual": número ou null,
         "currency": "BRL | USD | EUR"
       },
-      "ev": valor ganho (Earned Value) em R$ se disponível ou null,
-      "pv": valor planejado (Planned Value) em R$ se disponível ou null,
-      "ac": custo real (Actual Cost) em R$ se disponível ou null,
+      "bac": orçamento original total (Budget at Completion) em R$ ou null,
+      "ev": Earned Value acumulado total em R$ se disponível ou null,
+      "pv": Planned Value acumulado atual em R$ se disponível ou null,
+      "ac": Actual Cost acumulado total em R$ se disponível ou null,
       "riskProbability": 1-5 (probabilidade do risco principal),
       "riskImpact": 1-5 (impacto do risco principal),
+      "risks": [
+        {
+          "description": "descrição do risco",
+          "probability": 1-5,
+          "impact": 1-5,
+          "score": probabilidade * impacto (1-25),
+          "response": "plano de resposta se disponível",
+          "responsible": "responsável pelo risco se disponível"
+        }
+      ],
+      "scope": {
+        "plannedDeliverables": número total de entregas planejadas ou null,
+        "completedDeliverables": número de entregas concluídas ou null,
+        "approvedChanges": número de mudanças aprovadas ou null,
+        "approvedChangesValue": valor total de mudanças aprovadas em R$ ou null,
+        "scopeCreepPct": percentual de scope creep acumulado ou null
+      },
       "scheduleCurve": [
         { "month": "Jan/24", "planned": 0-100, "actual": 0-100 ou null se futuro }
+      ],
+      "monthlyData": [
+        {
+          "month": "Jan/24",
+          "pv": valor planejado acumulado em R$ até esse mês,
+          "ev": earned value acumulado em R$ ou null se futuro,
+          "ac": custo real acumulado em R$ ou null se futuro
+        }
       ],
       "costCurve": [
         { "month": "Jan/24", "planned": valor acumulado em R$, "actual": valor acumulado em R$ ou null se futuro }
@@ -62,12 +88,15 @@ Regras para o farol:
 - vermelho: problemas críticos, ação imediata necessária
 - cinza: status desconhecido ou sem dados suficientes
 
-Regras para riskProbability e riskImpact:
+Regras para riskProbability e riskImpact (risco principal/representativo do projeto):
 - vermelho → probabilidade 4-5, impacto 4-5
 - amarelo → probabilidade 2-4, impacto 2-4
 - verde → probabilidade 1-2, impacto 1-2
 - cinza → probabilidade 2, impacto 2
 
+Extraia TODOS os riscos identificados no documento para o array "risks". Para cada risco, calcule score = probability * impact.
+Extraia dados de escopo (entregas, mudanças) quando disponíveis.
+Se houver dados mensais de PV/EV/AC, preencha "monthlyData" com valores acumulados.
 Se o documento contiver múltiplos projetos, extraia todos. Se não tiver dados suficientes para um campo, use null ou array vazio.
 Retorne APENAS o JSON, sem explicações ou markdown.`;
 

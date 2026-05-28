@@ -18,6 +18,31 @@ export interface SCurvePoint {
   actual: number | null;
 }
 
+export interface MonthlyDataPoint {
+  month: string;
+  pv: number;
+  ev: number | null;
+  ac: number | null;
+}
+
+export interface Risk {
+  id?: string;
+  description: string;
+  probability: number;
+  impact: number;
+  score: number;
+  response?: string;
+  responsible?: string;
+}
+
+export interface ProjectScope {
+  plannedDeliverables?: number;
+  completedDeliverables?: number;
+  approvedChanges?: number;
+  approvedChangesValue?: number;
+  scopeCreepPct?: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -42,10 +67,15 @@ export interface Project {
   ev?: number;
   pv?: number;
   ac?: number;
+  bac?: number;
   riskProbability?: number;
   riskImpact?: number;
   scheduleCurve?: SCurvePoint[];
   costCurve?: SCurvePoint[];
+  // New
+  monthlyData?: MonthlyDataPoint[];
+  risks?: Risk[];
+  scope?: ProjectScope;
 }
 
 export interface ChatMessage {

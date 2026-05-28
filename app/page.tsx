@@ -26,6 +26,7 @@ function applyFilters(projects: Project[], filters: ProjectFilters, selectedIds:
     if (filters.farol !== 'all' && p.farol !== filters.farol) return false;
     if (filters.phases.length > 0 && !filters.phases.includes(p.phase!)) return false;
     if (filters.knowledgeAreas.length > 0 && !filters.knowledgeAreas.includes(p.knowledgeArea!)) return false;
+    // Overlap check: project period overlaps [dateStart, dateEnd]
     if (filters.dateStart && p.deadline && p.deadline < filters.dateStart) return false;
     if (filters.dateEnd && p.startDate && p.startDate > filters.dateEnd) return false;
     return true;
@@ -49,8 +50,14 @@ export default function Home() {
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [filters, setFilters]           = useState<ProjectFilters>(DEFAULT_FILTERS);
 
-  const activeProjects = applyFilters(projects, filters, selectedProjectIds);
-  const displayProjects = activeProjects.length > 0 ? activeProjects : projects;
+  // Single source of truth: displayProjects = all filtered/selected projects
+  // If nothing is selected yet (e.g., immediately after load before toggle) show all
+  const noSelection = selectedProjectIds.size === 0;
+  const displayProjects = applyFilters(
+    projects,
+    filters,
+    noSelection ? new Set(projects.map(p => p.id)) : selectedProjectIds,
+  );
   const selectedProject = projects.find(p => p.id === selectedId) ?? null;
 
   const handleFileProcessed = useCallback((result: FileUploadResult) => {

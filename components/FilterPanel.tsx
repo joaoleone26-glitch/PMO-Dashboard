@@ -8,6 +8,15 @@ const KNOWLEDGE_AREAS: KnowledgeArea[] = [
   'RH', 'Comunicações', 'Aquisições', 'Partes Interessadas', 'Integração',
 ];
 
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 6, padding: '5px 8px',
+  color: '#E4E4E7', fontSize: 11, outline: 'none',
+  colorScheme: 'dark',
+};
+
 function Checkbox({ checked, onChange, label, color }: { checked: boolean; onChange: () => void; label: string; color?: string }) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '2px 0' }}>
@@ -62,7 +71,8 @@ export function FilterPanel({ filters, onChange, onReset }: Props) {
       : [...filters.knowledgeAreas, area];
     onChange({ ...filters, knowledgeAreas: areas });
   };
-  const activeCount = (filters.farol !== 'all' ? 1 : 0) + filters.phases.length + filters.knowledgeAreas.length + (filters.dateStart ? 1 : 0);
+  const hasDateFilter = !!(filters.dateStart || filters.dateEnd);
+  const activeCount = (filters.farol !== 'all' ? 1 : 0) + filters.phases.length + filters.knowledgeAreas.length + (hasDateFilter ? 1 : 0);
 
   const farolOptions: { key: ProjectFilters['farol']; label: string; color: string }[] = [
     { key: 'all', label: 'Todos', color: '#A1A1AA' },
@@ -109,16 +119,42 @@ export function FilterPanel({ filters, onChange, onReset }: Props) {
         </div>
       </Section>
 
-      <Section title="Período">
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input type="month" value={filters.dateStart}
-            onChange={e => onChange({ ...filters, dateStart: e.target.value })}
-            style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '4px 8px', color: '#E4E4E7', fontSize: 10, outline: 'none' }} />
-          <span style={{ fontSize: 10, color: '#52525B' }}>até</span>
-          <input type="month" value={filters.dateEnd}
-            onChange={e => onChange({ ...filters, dateEnd: e.target.value })}
-            style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '4px 8px', color: '#E4E4E7', fontSize: 10, outline: 'none' }} />
+      <Section title="Período" count={hasDateFilter ? 1 : 0}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div>
+            <p style={{ fontSize: 9, color: '#52525B', marginBottom: 3, letterSpacing: '0.06em' }}>INÍCIO</p>
+            <input
+              type="date"
+              value={filters.dateStart}
+              onChange={e => onChange({ ...filters, dateStart: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <p style={{ fontSize: 9, color: '#52525B', marginBottom: 3, letterSpacing: '0.06em' }}>FIM</p>
+            <input
+              type="date"
+              value={filters.dateEnd}
+              onChange={e => onChange({ ...filters, dateEnd: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
+          {hasDateFilter && (
+            <button
+              onClick={() => onChange({ ...filters, dateStart: '', dateEnd: '' })}
+              style={{
+                fontSize: 10, color: '#52525B', background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6,
+                padding: '4px 0', cursor: 'pointer', width: '100%',
+              }}
+            >
+              Limpar período
+            </button>
+          )}
         </div>
+        <p style={{ fontSize: 9, color: '#3F3F46', marginTop: 5, lineHeight: 1.5 }}>
+          Exibe projetos com datas sobrepostas ao período
+        </p>
       </Section>
 
       <Section title="Área de Conhecimento" count={filters.knowledgeAreas.length}>
