@@ -93,14 +93,14 @@ export function FileUpload({ onFileProcessed }: Props) {
             <p style={{ fontSize: 12, color: '#71717A', textAlign: 'center', lineHeight: 1.5 }}>
               <span style={{ color: '#D5001C', fontWeight: 600 }}>Clique ou arraste</span> um arquivo
             </p>
-            <p style={{ fontSize: 10, color: '#3F3F46' }}>CSV · Excel · JSON · PDF · DOCX</p>
+            <p style={{ fontSize: 10, color: '#3F3F46' }}>CSV · Excel · JSON · PDF · DOCX · PPTX · PNG · JPG · XML · DXF · IFC · +</p>
           </>
         )}
         <input
           type="file"
           style={{ display: 'none' }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
-          accept=".csv,.xlsx,.xls,.json,.pdf,.docx,.doc,.txt"
+          accept=".csv,.xlsx,.xls,.xlsm,.xlsb,.json,.pdf,.docx,.doc,.pptx,.ppt,.txt,.png,.jpg,.jpeg,.gif,.webp,.tiff,.tif,.bmp,.vsdx,.rtf,.msg,.mpp,.mpt,.mpx,.mdb,.accdb,.dxf,.ifc,.dwg,.rvt,.skp,.nwd,.nwc,.xml,.xer,.p6xml"
           disabled={loading}
         />
       </label>
