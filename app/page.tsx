@@ -124,7 +124,7 @@ export default function Home() {
             </div>
 
             {/* Cloud connectors */}
-            <DataSourceConnector />
+            <DataSourceConnector onFileProcessed={handleFileProcessed} />
 
             {/* Loaded files */}
             <LoadedFiles

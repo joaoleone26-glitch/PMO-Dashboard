@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { FileUploadResult } from '@/lib/types';
+import { DriveFileBrowser } from './DriveFileBrowser';
 
 type Provider = 'onedrive' | 'googledrive';
 type ConnState = 'idle' | 'connecting' | 'connected' | 'error';
@@ -65,11 +67,29 @@ function ProviderButton({ icon, label, hint, state, onConnect, onDisconnect }: {
   );
 }
 
-export function DataSourceConnector() {
+interface Props {
+  onFileProcessed: (result: FileUploadResult) => void;
+}
+
+export function DataSourceConnector({ onFileProcessed }: Props) {
   const [states, setStates] = useState<Record<Provider, ProviderState>>({
     onedrive:    { state: 'idle' },
     googledrive: { state: 'idle' },
   });
+
+  // Restore existing connections on mount (e.g. after page refresh)
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/connect/onedrive/status').then(r => r.json()).catch(() => ({})),
+      fetch('/api/connect/googledrive/status').then(r => r.json()).catch(() => ({})),
+    ]).then(([od, gd]) => {
+      setStates(s => ({
+        ...s,
+        ...(od?.connected ? { onedrive: { state: 'connected', email: od.email } } : {}),
+        ...(gd?.connected ? { googledrive: { state: 'connected', email: gd.email } } : {}),
+      }));
+    });
+  }, []);
 
   // Listen for postMessage from OAuth popup
   useEffect(() => {
@@ -99,16 +119,13 @@ export function DataSourceConnector() {
       }
       if (data.authUrl) {
         const popup = window.open(data.authUrl, 'oauth', 'width=520,height=680,resizable=yes,scrollbars=yes');
-        // Fallback: if popup blocked, redirect to authUrl
         if (!popup) {
           window.location.href = data.authUrl;
           return;
         }
-        // Safety timeout: if popup never sends a message in 3 min, reset
         const timeout = setTimeout(() => {
           setStates(s => s[provider].state === 'connecting' ? { ...s, [provider]: { state: 'idle' } } : s);
         }, 180_000);
-        // Cleanup timeout when message arrives (handled in useEffect above)
         const cleanup = setInterval(() => {
           if (popup.closed) { clearInterval(cleanup); clearTimeout(timeout); }
         }, 1000);
@@ -122,6 +139,8 @@ export function DataSourceConnector() {
     fetch(`/api/connect/${provider}/disconnect`, { method: 'POST' });
     setStates(s => ({ ...s, [provider]: { state: 'idle' } }));
   }, []);
+
+  const gdriveConnected = states.googledrive.state === 'connected';
 
   return (
     <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px' }}>
@@ -139,20 +158,26 @@ export function DataSourceConnector() {
             <path d="M8.5 6.2L6.1 4A3.5 3.5 0 002 5.9C.8 6.3 0 7.4 0 8.7 0 10.5 1.4 12 3.2 12h10.3c1.4 0 2.5-1 2.5-2.3 0-1.1-.8-2.1-1.9-2.3l-.4-1.2z" fill="#28A8E0" opacity=".9"/>
           </svg>}
         />
-        <ProviderButton
-          label="Google Drive" hint="Google Workspace"
-          state={states.googledrive}
-          onConnect={() => connect('googledrive')}
-          onDisconnect={() => disconnect('googledrive')}
-          icon={<svg viewBox="0 0 87.3 78" width="22" height="20" fill="none">
-            <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066DA"/>
-            <path d="M43.65 25L29.9 1.4c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5A9.06 9.06 0 000 53h27.5z" fill="#00AC47"/>
-            <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.65 10.3z" fill="#EA4335"/>
-            <path d="M43.65 25L57.4 1.4C56.05.6 54.5.2 52.95.2H34.35c-1.55 0-3.1.45-4.45 1.2z" fill="#00832D"/>
-            <path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.45 1.2h50.6c1.55 0 3.1-.45 4.45-1.2z" fill="#2684FC"/>
-            <path d="M73.4 26.5l-13.5-23.4c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#FFBA00"/>
-          </svg>}
-        />
+
+        <div>
+          <ProviderButton
+            label="Google Drive" hint="Google Workspace"
+            state={states.googledrive}
+            onConnect={() => connect('googledrive')}
+            onDisconnect={() => disconnect('googledrive')}
+            icon={<svg viewBox="0 0 87.3 78" width="22" height="20" fill="none">
+              <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066DA"/>
+              <path d="M43.65 25L29.9 1.4c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5A9.06 9.06 0 000 53h27.5z" fill="#00AC47"/>
+              <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.65 10.3z" fill="#EA4335"/>
+              <path d="M43.65 25L57.4 1.4C56.05.6 54.5.2 52.95.2H34.35c-1.55 0-3.1.45-4.45 1.2z" fill="#00832D"/>
+              <path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.45 1.2h50.6c1.55 0 3.1-.45 4.45-1.2z" fill="#2684FC"/>
+              <path d="M73.4 26.5l-13.5-23.4c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#FFBA00"/>
+            </svg>}
+          />
+          {gdriveConnected && (
+            <DriveFileBrowser onFileProcessed={onFileProcessed} />
+          )}
+        </div>
       </div>
     </div>
   );
