@@ -11,12 +11,13 @@ import { DataSourceConnector } from '@/components/DataSourceConnector';
 import { FilterPanel } from '@/components/FilterPanel';
 import { ProjectDetail } from '@/components/ProjectDetail';
 import { ChatBox } from '@/components/ChatBox';
+import { ReportGenerator } from '@/components/ReportGenerator';
 
 const SCurvePrazo = dynamic(() => import('@/components/charts/SCurvePrazo').then(m => m.SCurvePrazo), { ssr: false });
 const SCurveCusto = dynamic(() => import('@/components/charts/SCurveCusto').then(m => m.SCurveCusto), { ssr: false });
 const RiskMatrix  = dynamic(() => import('@/components/charts/RiskMatrix').then(m => m.RiskMatrix),   { ssr: false });
 
-type Tab = 'dashboard' | 'chat';
+type Tab = 'dashboard' | 'chat' | 'report';
 
 const DEFAULT_FILTERS: ProjectFilters = { farol: 'all', phases: [], knowledgeAreas: [], dateStart: '', dateEnd: '' };
 
@@ -176,6 +177,23 @@ export default function Home() {
                   )}
                 </button>
               ))}
+              {/* Report tab button */}
+              <button onClick={() => setActiveTab('report')} style={{
+                padding: '13px 16px', background: 'none', border: 'none',
+                borderBottom: `2px solid ${activeTab === 'report' ? '#D5001C' : 'transparent'}`,
+                color: activeTab === 'report' ? '#FFFFFF' : '#D5001C',
+                fontSize: 12, fontWeight: activeTab === 'report' ? 700 : 500,
+                cursor: 'pointer', letterSpacing: '0.04em', transition: 'all 0.15s ease',
+                display: 'flex', alignItems: 'center', gap: 6, marginBottom: -1,
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14,2 14,8 20,8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                Gerar Relatório
+              </button>
               {projects.length > 0 && (
                 <span style={{ marginLeft: 'auto', fontSize: 10, color: '#52525B' }}>
                   {displayProjects.length} de {projects.length} projeto{projects.length !== 1 ? 's' : ''}
@@ -219,8 +237,10 @@ export default function Home() {
                     </div>
                   </div>
                 )
-              ) : (
+              ) : activeTab === 'chat' ? (
                 <ChatBox projects={displayProjects} totalProjects={projects.length} />
+              ) : (
+                <ReportGenerator projects={displayProjects} />
               )}
             </div>
           </main>
