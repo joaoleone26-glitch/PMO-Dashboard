@@ -1,5 +1,7 @@
 export type FarolStatus = 'verde' | 'amarelo' | 'vermelho' | 'cinza';
+
 export type ProjectPhase = 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento';
+
 export type KnowledgeArea =
   | 'Escopo' | 'Prazo' | 'Custo' | 'Qualidade' | 'Riscos'
   | 'RH' | 'Comunicações' | 'Aquisições' | 'Partes Interessadas' | 'Integração';
@@ -12,12 +14,6 @@ export interface KPI {
   status: 'on-track' | 'at-risk' | 'off-track' | 'unknown';
 }
 
-export interface SCurvePoint {
-  month: string;
-  planned: number;
-  actual: number | null;
-}
-
 export interface MonthlyDataPoint {
   month: string;
   pv: number;
@@ -25,12 +21,19 @@ export interface MonthlyDataPoint {
   ac: number | null;
 }
 
+// Legacy S-curve point format (still used as fallback in charts)
+export interface SCurvePoint {
+  month: string;
+  planned: number;
+  actual: number | null;
+}
+
 export interface Risk {
   id?: string;
   description: string;
-  probability: number;
-  impact: number;
-  score: number;
+  probability: number;  // 1-5
+  impact: number;       // 1-5
+  score: number;        // probability * impact (max 25)
   response?: string;
   responsible?: string;
 }
@@ -49,33 +52,77 @@ export interface Project {
   company: string;
   farol: FarolStatus;
   description?: string;
+  status: string;
+  progress?: number;
+  startDate?: string;
+  deadline?: string;
+  responsible?: string;
+  phase?: ProjectPhase;
+  knowledgeArea?: KnowledgeArea;
   kpis: KPI[];
   difficulties: string[];
   attentionPoints: string[];
-  status: string;
-  progress?: number;
-  deadline?: string;
-  startDate?: string;
   budget?: { planned?: number; actual?: number; currency?: string };
   team?: string[];
-  responsible?: string;
   lastUpdated: string;
   rawData?: string;
-  phase?: ProjectPhase;
-  knowledgeArea?: KnowledgeArea;
   // EVM
+  bac?: number;
   ev?: number;
   pv?: number;
   ac?: number;
-  bac?: number;
+  // Risco principal
   riskProbability?: number;
   riskImpact?: number;
+  // Dados detalhados
+  monthlyData?: MonthlyDataPoint[];
   scheduleCurve?: SCurvePoint[];
   costCurve?: SCurvePoint[];
-  // New
-  monthlyData?: MonthlyDataPoint[];
   risks?: Risk[];
   scope?: ProjectScope;
+}
+
+export interface FileExtractionField {
+  fieldName: string;
+  value: unknown;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+}
+
+export interface FileExtraction {
+  fileName: string;
+  filePath: string;
+  fileDate: string;  // data de modificação real do arquivo no Drive
+  fields: FileExtractionField[];
+}
+
+export interface ConsolidatedProject {
+  projectName?: string;
+  sourceFiles: string[];
+  confirmed: {
+    fieldName: string;
+    value: unknown;
+    source: string;
+    reasoning: string;
+  }[];
+  conflicts: {
+    fieldName: string;
+    options: {
+      value: unknown;
+      source: string;
+      fileDate: string;
+      reasoning: string;
+      recommended: boolean;
+    }[];
+  }[];
+  needsReview: {
+    fieldName: string;
+    value: unknown;
+    source: string;
+    confidence: 'medium' | 'low';
+    reasoning: string;
+  }[];
+  missing: string[];
 }
 
 export interface ChatMessage {
@@ -109,62 +156,11 @@ export interface ProjectFilters {
   dateEnd: string;
 }
 
-// ─── Multi-file consolidation types ─────────────────────────────────────────
-
-export interface FileExtractionField {
-  fieldName: string;
-  value: unknown;
-  confidence: 'high' | 'medium' | 'low';
-  reasoning: string;
-}
-
-export interface FileExtraction {
-  fileName: string;
-  filePath: string;
-  fileDate: string;
-  fields: FileExtractionField[];
-}
-
-export interface ConsolidatedFieldConfirmed {
-  fieldName: string;
-  value: unknown;
-  source: string;
-  reasoning: string;
-}
-
-export interface ConsolidatedFieldConflict {
-  fieldName: string;
-  options: {
-    value: unknown;
-    source: string;
-    fileDate: string;
-    reasoning: string;
-    recommended: boolean;
-  }[];
-}
-
-export interface ConsolidatedFieldNeedsReview {
-  fieldName: string;
-  value: unknown;
-  source: string;
-  confidence: 'medium' | 'low';
-  reasoning: string;
-}
-
-export interface ConsolidatedProject {
-  confirmed: ConsolidatedFieldConfirmed[];
-  conflicts: ConsolidatedFieldConflict[];
-  missing: string[];
-  needsReview: ConsolidatedFieldNeedsReview[];
-  projectName?: string;
-  sourceFiles: string[];
-}
-
 export interface DriveFileWithPath {
   id: string;
   name: string;
   mimeType: string;
-  size?: string;
-  modifiedTime: string;
   filePath: string;
+  modifiedTime: string;
+  size?: number;
 }

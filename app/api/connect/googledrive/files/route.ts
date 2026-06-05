@@ -60,7 +60,14 @@ async function listRecursive(
       files.push(...sub.files);
       totalFolders += sub.totalFolders;
     } else if (SUPPORTED_MIMES.has(item.mimeType)) {
-      files.push({ ...item, filePath: `${path}${item.name}` });
+      files.push({
+        id: item.id,
+        name: item.name,
+        mimeType: item.mimeType,
+        modifiedTime: item.modifiedTime,
+        filePath: `${path}${item.name}`,
+        size: item.size != null ? Number(item.size) : undefined,
+      });
     }
   }));
 

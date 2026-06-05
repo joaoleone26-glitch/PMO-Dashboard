@@ -71,7 +71,14 @@ async function listRecursive(
       const sub = await listRecursive(token, item.id, `${path}${item.name}/`, depth + 1);
       files.push(...sub);
     } else if (SUPPORTED_MIMES.has(item.mimeType)) {
-      files.push({ ...item, filePath: `${path}${item.name}` });
+      files.push({
+        id: item.id,
+        name: item.name,
+        mimeType: item.mimeType,
+        modifiedTime: item.modifiedTime,
+        filePath: `${path}${item.name}`,
+        size: item.size != null ? Number(item.size) : undefined,
+      });
     }
   }
 
@@ -139,8 +146,7 @@ export async function POST(req: NextRequest) {
 
             try {
               const rawText = await downloadAndParse(token, file);
-              const extraction = await extractFieldsFromFile(rawText, file.name, file.filePath);
-              extraction.fileDate = file.modifiedTime;
+              const extraction = await extractFieldsFromFile(rawText, file.name, file.filePath, file.modifiedTime);
               extractions.push(extraction);
             } catch (err) {
               console.error(`[consolidate] Error processing ${file.name}:`, err);
