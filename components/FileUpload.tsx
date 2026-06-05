@@ -10,33 +10,60 @@ interface Props {
 export function FileUpload({ onFileProcessed }: Props) {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [progressMsg, setProgressMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleFile = useCallback(async (file: File) => {
     setLoading(true);
     setError(null);
+    setProgressMsg(null);
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || `Erro ${res.status}`);
+      if (!res.body) throw new Error(`Erro ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let result: FileUploadResult | null = null;
+      let serverError: string | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line) as { type: string; message?: string; data?: FileUploadResult; error?: string };
+            if (event.type === 'progress' && event.message) {
+              setProgressMsg(event.message);
+            } else if (event.type === 'done' && event.data) {
+              result = event.data;
+            } else if (event.type === 'error' && event.error) {
+              serverError = event.error;
+            }
+          } catch {
+            // ignore malformed lines
+          }
+        }
       }
 
-      // Pass the full result to parent so it can track files + projects
-      onFileProcessed({
-        fileName: data.fileName,
-        format: data.format,
-        projects: data.projects,
-      });
+      if (serverError) throw new Error(serverError);
+      if (!result) throw new Error('Resposta incompleta do servidor');
+
+      onFileProcessed(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao processar arquivo');
     } finally {
       setLoading(false);
+      setProgressMsg(null);
     }
   }, [onFileProcessed]);
 
@@ -81,7 +108,9 @@ export function FileUpload({ onFileProcessed }: Props) {
               borderRadius: '50%',
               animation: 'spin 0.7s linear infinite',
             }} />
-            <p style={{ fontSize: 12, color: '#D5001C', fontWeight: 500 }}>Processando com IA...</p>
+            <p style={{ fontSize: 12, color: '#D5001C', fontWeight: 500, textAlign: 'center', lineHeight: 1.5 }}>
+              {progressMsg ?? 'Processando com IA...'}
+            </p>
           </>
         ) : (
           <>

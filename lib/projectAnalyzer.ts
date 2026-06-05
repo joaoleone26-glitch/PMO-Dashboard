@@ -3,6 +3,9 @@ import { Project } from './types';
 
 const client = new Anthropic();
 
+const CHUNK_SIZE = 12000;
+const CHUNK_OVERLAP = 1000;
+
 const EXTRACTION_SYSTEM_PROMPT = `Você é um analista especializado em PMO (Project Management Office) de infraestrutura.
 Sua tarefa é extrair e normalizar dados de projetos de documentos que podem vir em vários formatos (CSV, Excel, JSON, PDF, Word, texto livre).
 
@@ -100,31 +103,53 @@ Se houver dados mensais de PV/EV/AC, preencha "monthlyData" com valores acumulad
 Se o documento contiver múltiplos projetos, extraia todos. Se não tiver dados suficientes para um campo, use null ou array vazio.
 Retorne APENAS o JSON, sem explicações ou markdown.`;
 
-export async function extractProjectsFromText(rawText: string, fileName: string): Promise<Project[]> {
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
-    system: EXTRACTION_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: `Arquivo: ${fileName}\n\nConteúdo:\n${rawText.slice(0, 15000)}`,
-      },
-    ],
-  });
+function splitIntoChunks(text: string): string[] {
+  if (text.length <= 15000) return [text];
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const end = Math.min(start + CHUNK_SIZE, text.length);
+    chunks.push(text.slice(start, end));
+    if (end >= text.length) break;
+    start = end - CHUNK_OVERLAP;
+  }
+  return chunks;
+}
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+function countFilledFields(p: Project): number {
+  let count = 0;
+  const check = (v: unknown) => {
+    if (v != null && v !== '' && (!Array.isArray(v) || v.length > 0)) count++;
+  };
+  check(p.name); check(p.company); check(p.farol); check(p.description); check(p.status);
+  check(p.progress); check(p.startDate); check(p.deadline); check(p.responsible);
+  check(p.phase); check(p.knowledgeArea); check(p.bac); check(p.ev); check(p.pv); check(p.ac);
+  check(p.risks); check(p.scope); check(p.monthlyData); check(p.kpis);
+  check(p.difficulties); check(p.attentionPoints);
+  return count;
+}
 
-  console.log(`[analyzer] Resposta do Claude: ${text.length} chars, stop_reason=${response.stop_reason}`);
-  console.log(`[analyzer] Preview da resposta (500 chars): ${text.slice(0, 500)}`);
+function mergeProjectChunks(allChunks: Project[][]): Project[] {
+  const byName = new Map<string, Project>();
+  for (const chunk of allChunks) {
+    for (const project of chunk) {
+      const key = (project.name ?? '').toLowerCase().trim();
+      if (!key) continue;
+      const existing = byName.get(key);
+      if (!existing || countFilledFields(project) > countFilledFields(existing)) {
+        byName.set(key, project);
+      }
+    }
+  }
+  return Array.from(byName.values());
+}
 
+function parseProjectsFromText(text: string): Project[] {
+  console.log(`[analyzer] Resposta do Claude: ${text.length} chars`);
   try {
-    const cleaned = text
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/gi, '')
-      .trim();
+    const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
     const parsed = JSON.parse(cleaned);
-    const projects: Project[] = (parsed.projects || []).map((p: Project, i: number) => ({
+    return (parsed.projects || []).map((p: Project, i: number) => ({
       ...p,
       id: p.id || `proj-${Date.now()}-${i}`,
       lastUpdated: p.lastUpdated || new Date().toISOString(),
@@ -132,12 +157,49 @@ export async function extractProjectsFromText(rawText: string, fileName: string)
       difficulties: p.difficulties || [],
       attentionPoints: p.attentionPoints || [],
     }));
-    return projects;
   } catch (parseErr) {
     console.error('[analyzer] ERRO ao fazer JSON.parse da resposta do Claude:', parseErr);
-    console.error('[analyzer] Resposta completa que falhou no parse:', text);
     return [];
   }
+}
+
+async function extractChunk(text: string, fileName: string, chunkLabel: string): Promise<Project[]> {
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 8192,
+    system: EXTRACTION_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: `Arquivo: ${fileName}${chunkLabel}\n\nConteúdo:\n${text}` }],
+  });
+  const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+  console.log(`[analyzer] stop_reason=${response.stop_reason}, preview: ${responseText.slice(0, 200)}`);
+  return parseProjectsFromText(responseText);
+}
+
+export async function extractProjectsFromText(
+  rawText: string,
+  fileName: string,
+  onProgress?: (message: string) => void,
+): Promise<Project[]> {
+  const chunks = splitIntoChunks(rawText);
+
+  if (chunks.length === 1) {
+    return extractChunk(chunks[0], fileName, '');
+  }
+
+  console.log(`[analyzer] Texto grande (${rawText.length} chars) → ${chunks.length} chunks`);
+  const allResults: Project[][] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const msg = `Processando parte ${i + 1} de ${chunks.length}...`;
+    onProgress?.(msg);
+    console.log(`[analyzer] ${msg}`);
+    const projects = await extractChunk(chunks[i], fileName, ` (parte ${i + 1} de ${chunks.length})`);
+    allResults.push(projects);
+  }
+
+  const merged = mergeProjectChunks(allResults);
+  console.log(`[analyzer] Merge concluído: ${merged.length} projetos únicos de ${allResults.flat().length} extraídos`);
+  return merged;
 }
 
 export async function chatWithProjects(
