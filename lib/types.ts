@@ -108,3 +108,63 @@ export interface ProjectFilters {
   dateStart: string;
   dateEnd: string;
 }
+
+// ─── Multi-file consolidation types ─────────────────────────────────────────
+
+export interface FileExtractionField {
+  fieldName: string;
+  value: unknown;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+}
+
+export interface FileExtraction {
+  fileName: string;
+  filePath: string;
+  fileDate: string;
+  fields: FileExtractionField[];
+}
+
+export interface ConsolidatedFieldConfirmed {
+  fieldName: string;
+  value: unknown;
+  source: string;
+  reasoning: string;
+}
+
+export interface ConsolidatedFieldConflict {
+  fieldName: string;
+  options: {
+    value: unknown;
+    source: string;
+    fileDate: string;
+    reasoning: string;
+    recommended: boolean;
+  }[];
+}
+
+export interface ConsolidatedFieldNeedsReview {
+  fieldName: string;
+  value: unknown;
+  source: string;
+  confidence: 'medium' | 'low';
+  reasoning: string;
+}
+
+export interface ConsolidatedProject {
+  confirmed: ConsolidatedFieldConfirmed[];
+  conflicts: ConsolidatedFieldConflict[];
+  missing: string[];
+  needsReview: ConsolidatedFieldNeedsReview[];
+  projectName?: string;
+  sourceFiles: string[];
+}
+
+export interface DriveFileWithPath {
+  id: string;
+  name: string;
+  mimeType: string;
+  size?: string;
+  modifiedTime: string;
+  filePath: string;
+}
